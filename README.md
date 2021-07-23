@@ -7,4 +7,4 @@ set $build to your libcsp build directory after compilation
 
 then run
 
-csprun CSPTerm --canbus [your socketcan interface]
+csprun CSPTERM.py --canbus [your socketcan interface]
