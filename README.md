@@ -5,6 +5,9 @@ use csprun alias to run the script easier
 
 set $build to your libcsp build directory after compilation
 
+run
+# source alias.sh
+
 then run
 
 csprun CSPTERM.py --canbus [your socketcan interface]
