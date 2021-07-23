@@ -36,7 +36,7 @@ class NA_REMOTECLI:
             ("inputData", c_uint8*128)
         ]
     
-    class NAFRes(Structure):
+    class NARes(Structure):
         _pack_=0
         _fields_=[
             ("errorCode", c_uint8),
@@ -59,10 +59,10 @@ global args
 args = opt()
 
 
-libcsp.init(opt.address, "DebugTerminal", "debugging", "1.4", 10, 300)
+libcsp.init(10, "DebugTerminal", "debugging", "1.4", 10, 300)
 
 try:
-    libcsp.can_socketcan_init(args.canbus, f"{args.canbus}")
+    libcsp.can_socketcan_init(args.canbus)
 except BaseException as e:
     print(e)
     print(f"CSP Socketcan Init Failed Spectacularly @{args.canbus}")
@@ -71,7 +71,7 @@ except BaseException as e:
 if args.routing_table:
     libcsp.rtable_load(args.routing_table)
 else:
-    libcsp.rtable_load(f"0/0 {args.canbus}")
+    libcsp.rtable_load("0/0 CAN")
 
 print("Routes:")
 libcsp.print_routes()
@@ -80,7 +80,7 @@ import cmd
 
 PORT = DEFAULT_DEBUG_PORT
 
-class CSPTERM(cmd.CMD):
+class CSPTERM(cmd.Cmd):
     prompt= "[CSP]?>"
 
     def do_node(self, addr):
@@ -95,17 +95,29 @@ class CSPTERM(cmd.CMD):
         else:
             PORT = int(port)
 
+    def do_ping(self, line):
+        print("starting ping")
+        args = [int(i) for i in line.split(" ")]
+        for target in args:
+            try:
+                libcsp.ping(t)
+                print(f"Found device @ {target}")
+            except BaseException as e:
+                print(f"Failed to find device on @{target}")
+
     def do_request(self, msg):
         global args, SERVER, PORT
         
         # its the same thing
-        target_request = NA_REMOTECLI.NAFReq
-        target_response = NA_REMOTECLI.NAFRes
+        target_request = NA_REMOTECLI.NAReq
+        target_response = NA_REMOTECLI.NARes
 
-        if msg < 128:
+        if len(msg) < 128:
             msg += (128-len(msg))*"\u0000" # may be an error if sent? null literal?
-        msg = target_request(3, msg.encode())
-        outbuf = bytearray(target_request)
+        buffer = bytearray(3) + bytearray(msg.encode())
+        #msg = target_request(3, (c_uint8 * 128)(*[int(i) for i in msg]))
+        msg = target_request.from_buffer(buffer)
+        outbuf = bytearray(msg)
         inbuf = bytearray(sizeof(target_response))
         libcsp.transaction(0, SERVER, PORT, 1000, outbuf, inbuf)
         res = target_response.from_buffer(inbuf)
@@ -115,11 +127,4 @@ class CSPTERM(cmd.CMD):
 
 if __name__ == '__main__':
     print("Jonathan Martini @2021 UASPACE")
-    CSPTERM.cmdloop()
-
-
-
-
-    
-
-    
+    CSPTERM().cmdloop()
